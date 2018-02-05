@@ -2,9 +2,9 @@ import socket
 import sys
 import threading
 import time
+import os
 
-
-class SimpleServer():
+class SimpleServer:
 
     def __init__(self, server_ip, server_port):
         self.root_path = './Upload'
@@ -35,7 +35,7 @@ class SimpleServer():
             t.start()
 
     def _new_client_handler(self, client_sock, client_addr):
-        print(sys.stderr, 'New client {}:{}'.format(client_addr[0], client_addr[1]))
+        print('New client {}:{}'.format(client_addr[0], client_addr[1]))
 
         data = client_sock.recv(1024)
         request = bytes.decode(data)
@@ -56,33 +56,41 @@ class SimpleServer():
     def _set_headers(self, code, file):
         server_header = ''
         if code == 200:
-            server_header = 'HTTP/1.1 200 OK\n'
+            server_header = 'HTTP/1.1 200 OK\r\n'
         elif code == 404:
-            server_header = 'HTTP/1.1 404 Not Found\n'
+            server_header = 'HTTP/1.1 404 Not Found\r\n'
 
         current_time = time.strftime("%a, %d %b %Y %H:%M:%S", time.localtime())
-        server_header += 'Date: {}\n'.format(current_time)
-        server_header += 'Server: Simple-Server\n'
-        server_header += 'Connection: close\n\n'
+        server_header += 'Date: {}\r\n'.format(current_time)
+        server_header += 'Server: Simple-Server\r\n'
+        server_header += 'Connection: close\r\n\r\n'
 
-        if (file.split('.')[-1] == 'jpeg' or file.split('.')[-1] == 'gif') and code == 200:
-            server_header = ''
+        #if (file.split('.')[-1] == 'jpeg' or file.split('.')[-1] == 'gif') and code == 200:
+        #   server_header = ''
         return bytes(server_header, encoding='utf-8')
 
+    def _check_permission(self, file_path):
+        st = os.stat(file_path)
+        return bool(st.st_mode)
+
     def _do_get(self, path, conn):
+        response_content = b''
         try:
             if path == '/':
                 path = '/index.html'
 
-            fr = open(self.root_path + path, 'rb')
-            response_content = fr.read()
-            fr.close()
-            server_resp = self._set_headers(200, path)
-            server_resp += response_content
-        except IOError:
-            server_resp = self._set_headers(404, path)
+            permission = self._check_permission(self.root_path + path)
 
-        conn.send(server_resp)
+            if permission:
+                fr = open(self.root_path + path, 'rb')
+                response_content = fr.read()
+                fr.close()
+            conn.sendall(self._set_headers(200, path))
+            print(response_content)
+        except IOError:
+            conn.sendall(self._set_headers(404, path))
+
+        conn.sendall(response_content)
 
 
 def main(server_ip, server_port):
