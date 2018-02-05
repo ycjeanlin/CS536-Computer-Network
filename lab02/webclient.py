@@ -32,7 +32,6 @@ def main(server_ip, port, file_name):
             if line == '':
                 is_data = True
         '''
-        print(resp_data)
         with open('./Download' + file_name, 'wb') as fw:
             fw.write(output_data)
 

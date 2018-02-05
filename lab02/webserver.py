@@ -86,7 +86,6 @@ class SimpleServer:
                 response_content = fr.read()
                 fr.close()
             conn.sendall(self._set_headers(200, path))
-            print(response_content)
         except IOError:
             conn.sendall(self._set_headers(404, path))
 
